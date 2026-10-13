@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Dynamic Island — Browser Media",
+  "version": "1.0.1",
+  "description": "Local browser media metadata bridge for Windhawk Dynamic Island.",
+  "permissions": ["nativeMessaging", "tabs"],
+  "host_permissions": ["https://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Dynamic Island — Browser Media",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "all_frames": true,
+      "run_at": "document_start",
+      "world": "MAIN",
+      "js": ["page-media.js"]
+    },
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "all_frames": true,
+      "run_at": "document_start",
+      "world": "ISOLATED",
+      "js": ["relay.js"]
+    }
+  ]
+}

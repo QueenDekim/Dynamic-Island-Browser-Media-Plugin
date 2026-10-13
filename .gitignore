@@ -1,0 +1,15 @@
+# Runtime state and machine-specific native messaging registration
+__pycache__/
+*.py[cod]
+*.log
+node_modules/
+native/host.cmd
+native/native-host.json
+native/python-path.txt
+native/launcher.exe
+native/*.dll
+windhawk/*.wh.cpp
+windhawk/*result*.txt
+*.tmp
+*.bak
+.DS_Store
