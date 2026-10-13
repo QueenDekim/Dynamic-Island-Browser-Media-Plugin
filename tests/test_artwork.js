@@ -64,7 +64,10 @@ const root = path.resolve(__dirname, "..", "extension");
     'resolveArtwork({artworkUrls:["https://example.com/blocked.jpg", ' +
     '"https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"]}, "1:0:test")',ctx);
   assert.equal(Buffer.from(first,"base64").length,10);
-  assert.equal(calls.length,2);
+  // Public YouTube thumbnail now has priority over inaccessible artwork,
+  // so the blocked URL should not be fetched at all on the first pass.
+  assert.equal(calls.length,1);
+  assert.ok(calls[0].includes("i.ytimg.com"));
   const second = await vm.runInContext(
     'resolveArtwork({artworkUrls:["https://example.com/blocked.jpg"]}, "1:0:test")',ctx);
   assert.equal(second,first);

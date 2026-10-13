@@ -15,7 +15,10 @@ $launcher = Join-Path $native "launcher.exe"
 $manifestFile = Join-Path $native "native-host.json"
 $python = (Get-Command python.exe -ErrorAction Stop).Source
 if (-not (Test-Path -LiteralPath $hostScript)) { throw "Не найден host.py" }
-if (-not (Test-Path -LiteralPath $launcher)) { throw "Не найден launcher.exe" }
+if (-not (Test-Path -LiteralPath $launcher)) {
+    & (Join-Path $native "build-launcher.ps1")
+}
+if (-not (Test-Path -LiteralPath $launcher)) { throw "Не удалось собрать launcher.exe" }
 # Native Messaging expects an executable, not a .cmd script.
 # Store the full Python interpreter path for the native launcher.
 $pythonPathFile = Join-Path $native "python-path.txt"

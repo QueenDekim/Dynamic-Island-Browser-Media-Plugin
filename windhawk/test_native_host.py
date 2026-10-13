@@ -3,10 +3,14 @@ import base64, json, os, pathlib, struct, subprocess, sys, time, tempfile, shuti
 sandbox = tempfile.mkdtemp(prefix="dib-bridge-test-")
 base = pathlib.Path(sandbox) / "DynamicIslandBrowserMedia"
 cmd = base / "command.txt"
-host = pathlib.Path(__file__).resolve().parents[1] / "native" / "launcher.exe"
+native = pathlib.Path(__file__).resolve().parents[1] / "native"
+launcher = native / "launcher.exe"
+host_command = [str(launcher)] if launcher.exists() else [
+    sys.executable, "-u", str(native / "host.py")
+]
 env = os.environ.copy()
 env["LOCALAPPDATA"] = sandbox
-p = subprocess.Popen([str(host)], env=env,
+p = subprocess.Popen(host_command, env=env,
                      stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE)
 

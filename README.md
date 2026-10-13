@@ -1,90 +1,60 @@
-# Dynamic Island — Browser Media Bridge
+# Dynamic Island — Browser Media Plugin
 
-Расширение для Яндекс Браузера (Manifest V3) и интеграция с Windhawk
-Dynamic Island for Windows — Fork.
+Расширение Chromium/Яндекс.Браузера и Native Messaging host для получения из браузера метаданных воспроизводимого трека, обложки, таймлайна и управления воспроизведением.
 
-## Где файлы
+**Основной проект:** https://github.com/QueenDekim/Dynamic-Island-for-Windows-Enhanced
+**Этот репозиторий (Git submodule):** https://github.com/QueenDekim/Dynamic-Island-Browser-Media-Plugin
 
-- extension/ — расширение браузера (загружать ЭТУ папку).
-- native/host.py — Native Messaging host на Python 3.12 (без pip).
-- native/install.ps1 — регистрация host по ID расширения.
-- windhawk/browser_media_bridge.h — чтение метаданных, обложки и команд в моде.
-- windhawk/mod.wh.cpp — исправленная полная копия исходника Windhawk.
-- windhawk/mod.before-browser-bridge.wh.cpp — резервная копия исходника.
-- windhawk/test_native_host.py — автоматический тест протокола.
+## Структура
 
-## Установка
+- extension/ — Manifest V3 расширение (подключать именно эту папку).
+- native/host.py — Native Messaging host на Python 3.
+- native/launcher.cpp — вспомогательный EXE-запускатель на Windows.
+- native/build-launcher.ps1 — сборка launcher.exe компилятором Windhawk.
+- native/install.ps1 — регистрация host в реестре текущего пользователя.
+- windhawk/browser_media_bridge.h — C++ мост, встраиваемый в основной Windhawk-мод.
+- tests/ и extension/test_*.cjs — проверки YouTube artwork и транспорта.
 
-1. Открой в Яндекс Браузере browser://extensions.
-2. Включи Режим разработчика и Загрузить распакованное расширение.
-3. Укажи папку C:\Projects\DynamicIslandBrowserMedia\extension.
-4. В карточке расширения скопируй его ID (32 латинские буквы a-p).
-5. Запусти PowerShell под обычным пользователем:
+Исторические локальные копии и резервные копии Windhawk остаются на машине разработчика, но не включаются в Git.
 
-   powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Projects\DynamicIslandBrowserMedia\native\install.ps1" -ExtensionId ID_РАСШИРЕНИЯ
+## Установка расширения
 
-   Замени ID_РАСШИРЕНИЯ своим ID.
+1. В Яндекс.Браузере откройте browser://extensions.
+2. Включите режим разработчика, выберите «Загрузить распакованное расширение» и укажите папку extension/.
+3. Скопируйте ID установленного расширения (32 символа от a до p).
+4. Запустите Windows PowerShell:
 
-6. Полностью перезапусти Яндекс Браузер (закрой все процессы).
-7. Обнови вкладку YouTube: расширение не подключится к старой вкладке
-   до перезагрузки этой вкладки.
-8. Закрой и открой редактор Windhawk заново, чтобы он не перезаписал
-   внешние изменения из старого открытого буфера.
-9. Мод C:\ProgramData\Windhawk\EditorWorkspace\mod.wh.cpp уже обновлён.
-   Скомпилируй мод, включи Media и BrowserMediaPriority.
+~~~powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\native\install.ps1 -ExtensionId YOUR_EXTENSION_ID
+~~~
 
-## Проверка
+Скрипт автоматически соберёт native/launcher.exe, если его ещё нет; для сборки нужен Windhawk Compiler либо Windows Clang/MinGW C++ toolchain. Требуется Python, доступный как python.exe. Администратор Windows для регистрации HKCU не требуется.
 
-При воспроизведении видео открой значок расширения.
-Должно быть написано «Native Messaging подключён» и название трека.
-Через секунду проверь файл:
+5. Полностью закройте и заново откройте браузер, перезагрузите вкладки с медиаплеером и проверьте статус Native Messaging.
 
-    %LOCALAPPDATA%\DynamicIslandBrowserMedia\state.tsv
+## Windhawk
 
-В нём будет строка DIBRIDGE1, затем Play/Pause, название, исполнитель,
-альбом, сайт, позиция в миллисекундах, длительность в миллисекундах
-и SHA256 обложки. Обложки кешируются в этой же папке в файлах
-cover-<sha256>.bin.
+**Полный C++ исходник собирается в основном репозитории**:
 
-## Возможности и ограничения
+~~~powershell
+git clone --recurse-submodules https://github.com/QueenDekim/Dynamic-Island-for-Windows-Enhanced.git
+cd Dynamic-Island-for-Windows-Enhanced
+python scripts/build.py
+~~~
 
-- YouTube: название и артист из Media Session API, длительность HTML5,
-  обложка из Media Session API или OG Image.
-- Другие сайты: Media Session API при наличии; иначе заголовок страницы
-  и длительность доступного HTML5 audio/video.
-- Play/Pause и seek — HTMLMediaElement. Next/Prev — Media Session handlers
-  сайта или кнопки YouTube.
-- DRM и сайты без доступного HTML5 элемента могут не определяться.
-- Обложки получаются через HTTPS без cookies. Некоторые URL недоступны.
-- Нет TCP-сервера: обмен данными только через Native Messaging и файлы.
-- Native Messaging host запускается браузером автоматически.
+Содержимое dist/mod.wh.cpp вставьте в редактор Windhawk, затем скомпилируйте. Самостоятельно заменять header include-пути больше не требуется.
 
-## Проверка обложек (1.0.1)
+## Проверки
 
-После изменения файлов распакованного расширения браузер НЕ обновляет скрипты
-в уже открытых вкладках. Открой browser://extensions, нажми «Обновить»
-или значок перезагрузки у Dynamic Island — Browser Media, затем обнови
-вкладку с YouTube (Ctrl+R). После этого снова воспроизведи видео.
+~~~powershell
+node tests/test_artwork.js
+node extension/test_background_art.cjs
+node extension/test_page_art.cjs
+python windhawk/test_native_host.py
+~~~
 
-В окне расширения теперь отображается «Обложка получена» или текст
-ошибки загрузки, например HTTP 403 или No public artwork URLs.
-При успешной передаче девятая строка файла
-%LOCALAPPDATA%\DynamicIslandBrowserMedia\state.tsv
-содержит 64-символьный идентификатор обложки.
+Последний тест использует launcher.exe при его наличии; иначе запускает host.py напрямую через Python, чтобы проверять чистый Git checkout без локальных бинарников.
 
-Если обложка уже записана, но Windhawk продолжает показывать иконку,
-перекомпилируй мод: заголовок windhawk/browser_media_bridge.h изменён,
-чтобы повторять неудачное чтение/декодирование изображения.
+## Безопасность
 
-## Диагностика
-
-Если в расширении «Нет подключения», повтори установку Native Messaging
-с актуальным ID и перезапусти браузер. ID меняется после удаления или
-перемещения распакованного расширения.
-
-Автоматический тест host без браузера:
-
-    python "C:\Projects\DynamicIslandBrowserMedia\windhawk\test_native_host.py"
-
-Резервная копия исходника находится в windhawk/mod.before-browser-bridge.wh.cpp.
-Вернуть её в ProgramData можно с правами администратора.
+Native Messaging host работает только локально; расширение получает данные воспроизведения через Media Session и браузерные API. Путь к Python, исполняемый launcher.exe и локальный manifest конфигурации привязаны к компьютеру и исключены из Git.
