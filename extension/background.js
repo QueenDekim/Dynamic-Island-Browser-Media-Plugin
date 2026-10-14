@@ -241,14 +241,36 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
              hasArtwork: Boolean(lastTrack && [...lastGoodCover.keys()].some(k => k.endsWith(":" + lastTrack)))});
     return;
   }
-  if (message?.type !== "media" || !sender.tab ||
+  if (!["media", "clear"].includes(message?.type) || !sender.tab ||
       !/^https?:\/\//.test(sender.url || "")) return;
+  if (message.type === "clear") {
+    frames.delete(toFrameKey(sender.tab.id, sender.frameId || 0));
+    void publish();
+    return;
+  }
   const data = message.data || {};
   if (data.kind !== "dynamic-island-browser-media-v1" || data.type !== "media" ||
       typeof data.playing !== "boolean") return;
 
   const tabId = sender.tab.id;
   const frameId = sender.frameId || 0;
+  // YouTube preview videos can play for their entire duration. Only accept
+  // the top-level watch/live/shorts player; never an iframe/hover preview.
+  if (data.site === "YouTube") {
+    const page = safeText(data.pageUrl, 2048);
+    let valid = false;
+    try {
+      const parsed = new URL(page);
+      valid = /(^|\.)youtube\.com$/i.test(parsed.hostname) &&
+        (/^\/watch$/.test(parsed.pathname) ||
+         /^\/(shorts|live)\/[^/]+/.test(parsed.pathname));
+    } catch (_) {}
+    if (frameId !== 0 || !valid) {
+      frames.delete(toFrameKey(tabId, frameId));
+      void publish();
+      return;
+    }
+  }
   frames.set(toFrameKey(tabId, frameId), {
     tabId, frameId, when: Date.now(),
     data: {

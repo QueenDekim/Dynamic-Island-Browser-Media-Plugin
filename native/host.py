@@ -59,8 +59,11 @@ def save_media(message):
     atomic_write(STATE, ("\n".join(lines) + "\n").encode("utf-8"))
 
 def clear_state():
+    # A fresh tombstone tells the Windhawk media poller to ignore stale
+    # Windows/Yandex GSMTC sessions after YouTube SPA navigation.
+    # It expires automatically if the native host disconnects.
     try:
-        STATE.unlink(missing_ok=True)
+        atomic_write(STATE, b"DIBRIDGE1\nCLEAR\n")
     except OSError:
         pass
 

@@ -65,6 +65,15 @@ bool DIBBridgeValidCoverId(const std::string& id) {
     });
 }
 
+bool DIBBridgeHasRecentClear() {
+    const std::wstring base = DIBBridgeBasePath();
+    if (base.empty()) return false;
+    std::vector<uint8_t> bytes;
+    if (!DIBBridgeReadFile(base + L"state.tsv", 64, &bytes, true)) return false;
+    const std::string content(bytes.begin(), bytes.end());
+    return content == "DIBRIDGE1\nCLEAR\n";
+}
+
 bool TryReadBrowserBridgeSnapshot(MediaSnapshot* output) {
     const std::wstring base = DIBBridgeBasePath();
     if (base.empty()) return false;

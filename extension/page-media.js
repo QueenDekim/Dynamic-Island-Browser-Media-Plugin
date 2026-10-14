@@ -6,6 +6,9 @@
   const MARKER = "dynamic-island-browser-media-v1";
   let previous = "";
   let lastSent = 0;
+  let wasPublished = false;
+  let lastClearSent = 0;
+  let lastPageUrl = location.href;
   let mostRecentPlayingElement = null;
   const handlers = new Map();
 
@@ -20,7 +23,22 @@
     };
   }
 
+  function isYoutube() {
+    return /(^|\.)youtube\.com$/i.test(location.hostname);
+  }
+  function isYoutubePlaybackPage() {
+    return /^\/(watch|shorts\/[^/]+|live\/[^/]+)(?:\/|$)/.test(location.pathname) &&
+      (location.pathname !== "/watch" ||
+       /^[\w-]{11}$/.test(new URLSearchParams(location.search).get("v") || ""));
+  }
   function bestMedia() {
+    if (isYoutube()) {
+      // Hover previews and autoplay thumbnails are NOT the watch-page player.
+      // Keep the actual player selected even when paused.
+      if (!isYoutubePlaybackPage()) return null;
+      const player = document.querySelector("video.html5-main-video");
+      return player && player.isConnected ? player : null;
+    }
     const all = Array.from(document.querySelectorAll("video, audio"));
     if (mostRecentPlayingElement && mostRecentPlayingElement.isConnected &&
         !mostRecentPlayingElement.paused && !mostRecentPlayingElement.ended) {
@@ -183,7 +201,23 @@
     const now = Date.now();
     if (!force && now - lastSent < 1000) return;
     const data = snapshot();
-    if (!data) return;
+    if (!data) {
+      if (wasPublished) {
+        previous = "";
+        coverKey = "";
+        coverBase64 = "";
+        ++coverRequest;
+        wasPublished = false;
+      }
+      // Keep a fresh "no main player" marker: Windows may retain the old
+      // YouTube GSMTC session even after navigating to the home feed.
+      if (isYoutube() && (!lastClearSent || now - lastClearSent >= 3000)) {
+        lastClearSent = now;
+        window.postMessage({kind: MARKER, type: "clear"}, "*");
+      }
+      return;
+    }
+    wasPublished = true;
     const serialized = JSON.stringify(data);
     if (!force && serialized === previous && now - lastSent < 4000) return;
     previous = serialized;
@@ -192,15 +226,30 @@
   }
 
   function mediaChanged(event) {
-    if (event.target instanceof HTMLMediaElement && event.type === "play") {
-      mostRecentPlayingElement = event.target;
+    if (event.target instanceof HTMLMediaElement) {
+      if (isYoutube() && !event.target.matches("video.html5-main-video")) return;
+      if (event.type === "play") mostRecentPlayingElement = event.target;
     }
     emit(true);
   }
   for (const event of ["play", "playing", "pause", "ended", "loadedmetadata", "durationchange", "seeked"]) {
     document.addEventListener(event, mediaChanged, true);
   }
-  document.addEventListener("timeupdate", () => emit(), true);
+  document.addEventListener("timeupdate", event => {
+    if (isYoutube() && !event.target.matches?.("video.html5-main-video")) return;
+    emit();
+  }, true);
+  // YouTube navigates via History API without reloading its document.
+  for (const event of ["yt-navigate-start", "yt-navigate-finish",
+                       "popstate", "pageshow"]) {
+    window.addEventListener(event, () => queueMicrotask(() => emit(true)));
+  }
+  setInterval(() => {
+    if (location.href !== lastPageUrl) {
+      lastPageUrl = location.href;
+      emit(true);
+    }
+  }, 250);
 
   function control(action, positionMs) {
     const el = bestMedia();

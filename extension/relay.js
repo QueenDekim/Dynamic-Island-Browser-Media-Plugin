@@ -4,8 +4,10 @@
   window.addEventListener("message", event => {
     if (event.source !== window) return;
     const msg = event.data;
-    if (!msg || msg.kind !== MARKER || msg.type !== "media") return;
-    if (typeof msg.playing !== "boolean" || typeof msg.title !== "string") return;
+    if (!msg || msg.kind !== MARKER ||
+        !["media", "clear"].includes(msg.type)) return;
+    if (msg.type === "media" &&
+        (typeof msg.playing !== "boolean" || typeof msg.title !== "string")) return;
     try {
       chrome.runtime.sendMessage({type: "media", data: msg}, () => {
         void chrome.runtime.lastError;
