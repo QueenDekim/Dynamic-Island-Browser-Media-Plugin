@@ -50,6 +50,13 @@
        mini.getAttribute("player-state") === "paused");
   }
   function bestMedia() {
+    // Steam profile artwork/backgrounds autoplay silent or decorative videos.
+    // They are not user-selected audio players, even when the <video> tag
+    // reports playing and the browser exposes a synthetic media session.
+    if (/^(?:steamcommunity\.com|www\.steamcommunity\.com)$/i.test(location.hostname) &&
+        /^\/(?:id|profiles)\/[^/]+\/?(?:$|[?#])/.test(location.pathname)) {
+      return null;
+    }
     if (isYoutube()) {
       // The real watch player persists in YouTube's mini player. Merely
       // leaving /watch must not clear it; closing the mini player should.
