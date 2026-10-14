@@ -31,13 +31,23 @@
       (location.pathname !== "/watch" ||
        /^[\w-]{11}$/.test(new URLSearchParams(location.search).get("v") || ""));
   }
+  function youtubeMiniPlayerActive() {
+    // YouTube moves the *same* #movie_player into ytd-miniplayer on SPA
+    // navigation; a hover thumbnail never lives inside this container.
+    const mini = document.querySelector("ytd-miniplayer");
+    if (!mini || !mini.isConnected || mini.hasAttribute("hidden")) return false;
+    return mini.hasAttribute("active") ||
+      mini.getAttribute("player-state") === "playing" ||
+      mini.getAttribute("player-state") === "paused";
+  }
   function bestMedia() {
     if (isYoutube()) {
-      // Hover previews and autoplay thumbnails are NOT the watch-page player.
-      // Keep the actual player selected even when paused.
-      if (!isYoutubePlaybackPage()) return null;
-      const player = document.querySelector("video.html5-main-video");
-      return player && player.isConnected ? player : null;
+      // The real watch player persists in YouTube's mini player. Merely
+      // leaving /watch must not clear it; closing the mini player should.
+      if (!isYoutubePlaybackPage() && !youtubeMiniPlayerActive()) return null;
+      const player = document.querySelector("#movie_player video.html5-main-video") ||
+                     document.querySelector("ytd-miniplayer video.html5-main-video");
+      return player && player.isConnected && !player.ended ? player : null;
     }
     const all = Array.from(document.querySelectorAll("video, audio"));
     if (mostRecentPlayingElement && mostRecentPlayingElement.isConnected &&
@@ -193,7 +203,8 @@
       artworkUrl: artworkUrls[0] || "",
       artworkUrls,
       artBase64: coverBase64,
-      pageUrl: location.origin + location.pathname
+      pageUrl: location.origin + location.pathname,
+      youtubeMiniPlayer: isYoutube() && !isYoutubePlaybackPage() && youtubeMiniPlayerActive()
     };
   }
 
@@ -209,8 +220,8 @@
         ++coverRequest;
         wasPublished = false;
       }
-      // Keep a fresh "no main player" marker: Windows may retain the old
-      // YouTube GSMTC session even after navigating to the home feed.
+      // Keep a fresh tombstone only after the watch player or mini player
+      // has actually closed, not merely after navigation to the home feed.
       if (isYoutube() && (!lastClearSent || now - lastClearSent >= 3000)) {
         lastClearSent = now;
         window.postMessage({kind: MARKER, type: "clear"}, "*");

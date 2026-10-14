@@ -17,6 +17,12 @@ class MediaElement {
 }
 const main = new MediaElement(true);
 const hover = new MediaElement(false);
+let miniActive = false;
+const mini = {
+  isConnected: true,
+  hasAttribute(key) {return key === "active" ? miniActive : false;},
+  getAttribute() {return null;}
+};
 const context = {
   URL, URLSearchParams, Date, console,
   HTMLMediaElement: MediaElement,
@@ -30,7 +36,9 @@ const context = {
   document: {
     title:"Full video - YouTube",baseURI:url.href,
     querySelector(s) {
-      if(s==="video.html5-main-video") return main.isConnected?main:null;
+      if(s==="ytd-miniplayer") return mini;
+      if(s==="#movie_player video.html5-main-video" ||
+         s==="ytd-miniplayer video.html5-main-video") return main.isConnected?main:null;
       return null;
     },
     querySelectorAll(){return [hover,main]},
@@ -53,12 +61,17 @@ assert.equal(posted.length,length,"hover preview must never trigger source chang
 domListeners.get("timeupdate")({target:hover,type:"timeupdate"});
 assert.equal(posted.length,length,"preview progress must not update the island");
 url = new URL("https://www.youtube.com/");
+miniActive = true;
 timers[0]();
-assert.equal(posted.at(-1).type,"clear","SPA home navigation must clear watch state");
+assert.equal(posted.at(-1).type,"media","YouTube home miniplayer must retain actual video");
+assert.equal(posted.at(-1).youtubeMiniPlayer,true,"YouTube miniplayer must be explicitly identified");
+miniActive = false;
+listeners.get("yt-navigate-finish")();
+assert.equal(posted.at(-1).type,"clear","closing YouTube miniplayer must clear");
 const afterClear=posted.length;
 timers[1]();
-assert.equal(posted.length,afterClear,"clear must be emitted only once");
+assert.equal(posted.length,afterClear,"clear must not be spammed");
 url=new URL("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
 timers[0]();
 assert.equal(posted.at(-1).type,"media","returning to watch page must restore player");
-console.log("PASS YouTube watch player stays selected on pause, ignores complete hover videos, clears on SPA home");
+console.log("PASS watch player, complete hover preview ignored, miniplayer survives home SPA, close clears");

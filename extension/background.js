@@ -263,7 +263,8 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
       const parsed = new URL(page);
       valid = /(^|\.)youtube\.com$/i.test(parsed.hostname) &&
         (/^\/watch$/.test(parsed.pathname) ||
-         /^\/(shorts|live)\/[^/]+/.test(parsed.pathname));
+         /^\/(shorts|live)\/[^/]+/.test(parsed.pathname) ||
+         data.youtubeMiniPlayer === true);
     } catch (_) {}
     if (frameId !== 0 || !valid) {
       frames.delete(toFrameKey(tabId, frameId));
