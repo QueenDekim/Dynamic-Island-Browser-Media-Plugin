@@ -7,6 +7,8 @@ const timers = [];
 const listeners = new Map();
 const domListeners = new Map();
 let url = new URL("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+let clock = 100000;
+class MockDate extends Date { static now() { return clock; } }
 class MediaElement {
   constructor(main, paused = false) {
     this.main = main; this.paused = paused; this.ended = false;
@@ -20,11 +22,12 @@ const hover = new MediaElement(false);
 let miniActive = false;
 const mini = {
   isConnected: true,
-  hasAttribute(key) {return key === "active" ? miniActive : false;},
-  getAttribute() {return null;}
+  hasAttribute(key) {return key === "active" ? miniActive : key === "hidden" ? !miniActive : false;},
+  getAttribute() {return null;},
+  querySelector(selector) {return miniActive && selector === "video.html5-main-video" ? main : null;}
 };
 const context = {
-  URL, URLSearchParams, Date, console,
+  URL, URLSearchParams, Date: MockDate, console,
   HTMLMediaElement: MediaElement,
   get location() {return url},
   navigator: { mediaSession: {metadata: {title: "Full video",artist:"Artist",artwork:[]},
@@ -61,13 +64,20 @@ assert.equal(posted.length,length,"hover preview must never trigger source chang
 domListeners.get("timeupdate")({target:hover,type:"timeupdate"});
 assert.equal(posted.length,length,"preview progress must not update the island");
 url = new URL("https://www.youtube.com/");
-miniActive = true;
+miniActive = false;
 timers[0]();
+assert.equal(posted.at(-1).type,"media","SPA navigation must not immediately clear before miniplayer mounts");
+clock += 1200;
+miniActive = true;
+listeners.get("yt-navigate-finish")();
 assert.equal(posted.at(-1).type,"media","YouTube home miniplayer must retain actual video");
 assert.equal(posted.at(-1).youtubeMiniPlayer,true,"YouTube miniplayer must be explicitly identified");
 miniActive = false;
 listeners.get("yt-navigate-finish")();
-assert.equal(posted.at(-1).type,"clear","closing YouTube miniplayer must clear");
+assert.equal(posted.at(-1).type,"media","temporary transition must preserve player");
+clock += 3100;
+timers[1]();
+assert.equal(posted.at(-1).type,"clear","confirmed closing must clear");
 const afterClear=posted.length;
 timers[1]();
 assert.equal(posted.length,afterClear,"clear must not be spammed");

@@ -9,6 +9,9 @@
   let wasPublished = false;
   let lastClearSent = 0;
   let lastPageUrl = location.href;
+  let missingPlayerSince = 0;
+  let lastKnownMainPlayer = null;
+  const PLAYER_CLOSE_GRACE_MS = 3000;
   let mostRecentPlayingElement = null;
   const handlers = new Map();
 
@@ -35,19 +38,29 @@
     // YouTube moves the *same* #movie_player into ytd-miniplayer on SPA
     // navigation; a hover thumbnail never lives inside this container.
     const mini = document.querySelector("ytd-miniplayer");
-    if (!mini || !mini.isConnected || mini.hasAttribute("hidden")) return false;
-    return mini.hasAttribute("active") ||
-      mini.getAttribute("player-state") === "playing" ||
-      mini.getAttribute("player-state") === "paused";
+    if (!mini || !mini.isConnected) return false;
+    // Polymer can keep the 'hidden' attribute during the transition.
+    // Check the actual movie-player container and its video rather than
+    // relying solely on asynchronously updated active/hidden flags.
+    const player = mini.querySelector?.("video.html5-main-video");
+    if (player?.isConnected && !player.ended) return true;
+    return !mini.hasAttribute("hidden") &&
+      (mini.hasAttribute("active") ||
+       mini.getAttribute("player-state") === "playing" ||
+       mini.getAttribute("player-state") === "paused");
   }
   function bestMedia() {
     if (isYoutube()) {
       // The real watch player persists in YouTube's mini player. Merely
       // leaving /watch must not clear it; closing the mini player should.
       if (!isYoutubePlaybackPage() && !youtubeMiniPlayerActive()) return null;
-      const player = document.querySelector("#movie_player video.html5-main-video") ||
-                     document.querySelector("ytd-miniplayer video.html5-main-video");
-      return player && player.isConnected && !player.ended ? player : null;
+      const player = document.querySelector("ytd-miniplayer video.html5-main-video") ||
+                     document.querySelector("#movie_player video.html5-main-video");
+      if (player && player.isConnected && !player.ended) {
+        lastKnownMainPlayer = player;
+        return player;
+      }
+      return null;
     }
     const all = Array.from(document.querySelectorAll("video, audio"));
     if (mostRecentPlayingElement && mostRecentPlayingElement.isConnected &&
@@ -213,6 +226,13 @@
     if (!force && now - lastSent < 1000) return;
     const data = snapshot();
     if (!data) {
+      // A watch -> feed transition temporarily detaches the primary video
+      // while Polymer moves it into the mini player. Do not clear on the
+      // same navigation event; confirm a stable absence first.
+      if (isYoutube() && wasPublished) {
+        if (!missingPlayerSince) missingPlayerSince = now;
+        if (now - missingPlayerSince < PLAYER_CLOSE_GRACE_MS) return;
+      }
       if (wasPublished) {
         previous = "";
         coverKey = "";
@@ -228,6 +248,7 @@
       }
       return;
     }
+    missingPlayerSince = 0;
     wasPublished = true;
     const serialized = JSON.stringify(data);
     if (!force && serialized === previous && now - lastSent < 4000) return;

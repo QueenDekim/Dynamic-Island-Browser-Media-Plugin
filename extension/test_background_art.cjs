@@ -43,6 +43,7 @@ const assert = require("assert");
       album:"Album",
       playing:true,
       site:"YouTube",
+      pageUrl:"https://www.youtube.com/watch",
       durationMs:45000,
       positionMs:5000,
       artBase64:"QUJDRA==",
