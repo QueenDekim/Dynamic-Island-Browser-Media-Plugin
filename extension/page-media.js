@@ -214,6 +214,12 @@
       kind: MARKER,
       type: "media",
       playing: !media.paused && !media.ended,
+      // Only definite silence: muted/zero-volume or explicit no-audio track.
+      audioMuted: media.muted || media.volume <= 0 ||
+        (typeof HTMLVideoElement !== "undefined" &&
+         media instanceof HTMLVideoElement && media.readyState >= 2 &&
+         ((media.audioTracks && media.audioTracks.length === 0) ||
+          media.mozHasAudio === false)),
       title,
       artist: clean(meta && meta.artist),
       album: clean(meta && meta.album),
@@ -271,7 +277,7 @@
     }
     emit(true);
   }
-  for (const event of ["play", "playing", "pause", "ended", "loadedmetadata", "durationchange", "seeked"]) {
+  for (const event of ["play", "playing", "pause", "ended", "loadedmetadata", "durationchange", "seeked", "volumechange"]) {
     document.addEventListener(event, mediaChanged, true);
   }
   document.addEventListener("timeupdate", event => {

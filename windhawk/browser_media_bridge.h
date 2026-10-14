@@ -99,6 +99,7 @@ bool TryReadBrowserBridgeSnapshot(MediaSnapshot* output) {
     next.playing = lines[1] == "1";
     next.browserAudioFallback = true; // Don't control an unrelated Windows session.
     next.browserBridge = true;
+    next.browserMediaMuted = lines.size() >= 10 && lines[9] == "1";
     next.title = DIBBridgeUtf8(lines[2]);
     next.artist = DIBBridgeUtf8(lines[3]);
     next.albumTitle = DIBBridgeUtf8(lines[4]);

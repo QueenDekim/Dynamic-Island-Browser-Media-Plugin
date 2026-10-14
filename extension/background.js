@@ -215,6 +215,7 @@ async function publish() {
     port.postMessage({
       type: "media",
       playing: data.playing,
+      audioMuted: data.audioMuted === true,
       title: data.title,
       artist: data.artist,
       album: data.album,
@@ -276,6 +277,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     tabId, frameId, when: Date.now(),
     data: {
       playing: data.playing,
+      audioMuted: data.audioMuted === true,
       title: safeText(data.title),
       artist: safeText(data.artist),
       album: safeText(data.album),

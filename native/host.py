@@ -54,7 +54,8 @@ def save_media(message):
         tidy(message.get("site"), 150),
         str(as_ms(message.get("positionMs"))),
         str(as_ms(message.get("durationMs"))),
-        cover
+        cover,
+        "1" if message.get("audioMuted") is True else "0"
     ]
     atomic_write(STATE, ("\n".join(lines) + "\n").encode("utf-8"))
 
